@@ -1,0 +1,4 @@
+confluent-kafka==2.4.0
+pandas==2.2.2
+pydantic==2.7.1
+python-dotenv==1.0.1
