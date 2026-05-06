@@ -64,6 +64,24 @@ Every banking transaction is sent as an `EventEnvelope` with:
 - Docker and Docker Compose for local Kafka.
 - Python 3.11 or newer for running the cloud producer locally.
 
+## Dataset
+
+Download the Indian Banking Transactions dataset from Kaggle and place the CSV
+in `producers/cloud/data/transactions.csv`:
+
+```bash
+curl -L -o ~/Downloads/indian-banking-transactions-20192024.zip \
+  https://www.kaggle.com/api/v1/datasets/download/belbino/indian-banking-transactions-20192024
+
+unzip ~/Downloads/indian-banking-transactions-20192024.zip \
+  -d producers/cloud/data/
+
+# Rename to the expected filename if needed
+mv producers/cloud/data/*.csv producers/cloud/data/transactions.csv
+```
+
+The `data/` directory is gitignored — the CSV is not committed to the repo.
+
 ## Local Setup
 
 Start Kafka and Kafka UI:
@@ -76,10 +94,11 @@ docker compose up -d
 Kafka listens on `localhost:9092`. Kafka UI is available at
 `http://localhost:8081`.
 
-Create and activate a Python environment:
+Create a `.env` file and activate a Python environment:
 
 ```bash
 cd producers/cloud
+cp .env.example .env          # edit if your CSV path or topic differs
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -88,7 +107,14 @@ pip install -r requirements.txt
 Run the producer:
 
 ```bash
-python -m banking_producer.main
+python3 -m banking_producer.main
+```
+
+Stop the Kafka stack when done:
+
+```bash
+cd producers
+docker compose down
 ```
 
 ## Configuration
@@ -108,7 +134,7 @@ The producer reads configuration from environment variables, with defaults:
 The cloud producer can also be built as a container from `producers/cloud`:
 
 ```bash
-docker build -t adaptive-data-lake-cloud-producer .
+docker build -t banking-producer .
 ```
 
 When running in Docker on the same Compose network as Kafka, set
