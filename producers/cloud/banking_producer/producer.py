@@ -7,7 +7,7 @@ from typing import Any, Dict
 
 from confluent_kafka import Producer
 
-from .config import KAFKA_BOOTSTRAP_SERVERS, KAFKA_TOPIC, PIPELINE_VERSION
+from .config import KAFKA_BOOTSTRAP_SERVERS, KAFKA_TOPIC, PIPELINE_VERSION, SCHEMA_ID
 from .schema import EventEnvelope
 
 logger = logging.getLogger(__name__)
@@ -60,6 +60,7 @@ class BankingProducer:
             event_type="banking_transaction",
             idempotency_key=_make_idempotency_key(row),
             pipeline_version=PIPELINE_VERSION,
+            schema_id=SCHEMA_ID,
             payload=row,
         )
         self._producer.produce(
