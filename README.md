@@ -121,13 +121,13 @@ docker compose down
 
 The producer reads configuration from environment variables, with defaults:
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker address |
-| `KAFKA_TOPIC` | `banking-transactions` | Kafka topic to publish to |
-| `CSV_FILE_PATH` | `data/transactions.csv` | Source CSV file |
-| `PRODUCER_BATCH_SIZE` | `500` | Flush interval while sending rows |
-| `PIPELINE_VERSION` | `1.0.0` | Version stamped on outgoing events |
+| Variable                  | Default                 | Purpose                            |
+| ------------------------- | ----------------------- | ---------------------------------- |
+| `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092`        | Kafka broker address               |
+| `KAFKA_TOPIC`             | `banking-transactions`  | Kafka topic to publish to          |
+| `CSV_FILE_PATH`           | `data/transactions.csv` | Source CSV file                    |
+| `PRODUCER_BATCH_SIZE`     | `500`                   | Flush interval while sending rows  |
+| `PIPELINE_VERSION`        | `1.0.0`                 | Version stamped on outgoing events |
 
 ## Docker Producer
 
@@ -157,3 +157,7 @@ The broader architecture still calls for ingestion services, schema governance,
 data quality rules, validation outputs, storage writers, query adapters, REST
 APIs, observability, and a future Apache Hudi integration path. See
 `architecture.md` for the full design review and implementation priorities.
+
+#
+
+Thank you
