@@ -157,7 +157,3 @@ The broader architecture still calls for ingestion services, schema governance,
 data quality rules, validation outputs, storage writers, query adapters, REST
 APIs, observability, and a future Apache Hudi integration path. See
 `architecture.md` for the full design review and implementation priorities.
-
-#
-
-Thank you
