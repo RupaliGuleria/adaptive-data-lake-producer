@@ -31,13 +31,15 @@ Key implementation risks are concentrated around:
 - **REST API delivery** to downstream consumers.
 - **Future Hudi** shown as a convergent path for both cloud and on-prem.
 
-### Needs explicit clarification
+### Decided
 
-- The machine-readable flow includes **API -> consumers -> ML(optional)** implicitly, but diagram shows ML after consumers. Clarify whether ML is:
-  1. downstream external consumer, or
-  2. internal platform workload reading from storage/query/API.
-- Staging layer semantics are unspecified (memory vs object store vs table) and retention policies are missing.
-- Validation engine output contract is not explicitly defined (only schema and quality outputs are detailed).
+- **ML placement**: Internal platform workload reading from storage/query/API. External consumer path may be added in a later iteration.
+- **Staging layer**: In-memory (Python dict/DataFrame in-process) for initial integration testing — zero setup, zero cost, sufficient to validate pipeline logic. Graduate to **MinIO** (self-hosted S3-compatible, Docker Compose) as the free persistent staging layer before touching real GCS/S3. MinIO speaks the S3 API so the storage writer code is unchanged at cloud promotion.
+
+### TODO
+
+- Validation engine output contract is not yet defined. To be specified before the intelligence layer is implemented.
+- Backpressure plan (consumer lag thresholds, autoscaling policy), SLOs (ingestion latency, freshness, query p95, error budget), compaction schedule, and IAM/RBAC matrix are deferred to a future operations phase.
 
 ---
 
@@ -86,12 +88,15 @@ These improve reproducibility, replay debugging, and governance.
 ### Kafka Consumer
 
 - Interface is fine but should include offset/partition metadata in returned Event.
-- Define commit strategy: auto vs manual; at-least-once vs effectively-once.
+- **Offset commit strategy: Manual commit, at-least-once delivery.** Offsets are committed only after the event has been successfully processed (written to staging/storage). Duplicate events are possible on consumer restart; the ingestion processor handles dedup via `idempotency_key`.
 
 ### Ingestion Processor
 
-- Dedup key strategy should be explicit (`event_id` or hash of normalized payload).
-- Add invalid event handling path (DLQ topic + retry topic).
+- Dedup key strategy: `idempotency_key` from the event envelope (falls back to SHA-256 hash of the normalized payload if `transaction_id` is absent).
+- **Error routing:**
+  - Transient errors (network blip, database lock, timeout) → route to **Retry Topic**. After retry exhaustion (max attempts TBD), route to **DLQ**.
+  - Fatal errors (null pointer exception, invalid data format, schema parse failure) → bypass retries, route **straight to DLQ**.
+- Retry topic consumers back off exponentially and track attempt count in the event header. **Max 3 attempts** (attempt 1 → 2s, attempt 2 → 4s, attempt 3 → 8s); on exhaustion the event is forwarded to DLQ.
 
 ### Schema Engine
 
@@ -157,7 +162,7 @@ Given target layout:
 
 - `producers/`: sample cloud/on-prem event emitters.
 - `kafka/`: topic config, retention, DLQ/retry conventions.
-- `ingestion/`: cloud and on-prem adapters + shared normalization.
+- `ingestion/`: on-prem adapter + shared normalization. Full design in `ingestion/DESIGN.md`.
 - `intelligence/`: schema, quality, validation modules + rulesets.
 - `staging/`: transient storage abstraction and TTL controls.
 - `storage/`: parquet writer, partitioner, format adapters (avro/protobuf).

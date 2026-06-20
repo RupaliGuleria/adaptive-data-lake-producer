@@ -1,0 +1,31 @@
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: onprem-ingestion-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      max-poll-records: 500
+      fetch-min-size: 1048576
+      fetch-max-wait: 500
+    listener:
+      ack-mode: MANUAL_IMMEDIATE
+      type: BATCH
+      concurrency: 1
+
+ingestion:
+  worker-pool-size: 8
+  dedup-cache-ttl-minutes: 60
+  batch:
+    timeout-minutes: 5
+    timeout-check-interval-ms: 30000
+  staging:
+    drain-interval-ms: 5000
+  retry:
+    max-attempts: 3
+    backoff-base-ms: 2000
+  topics:
+    control: banking-control
+    primary: banking-transactions
+    retry: banking-transactions-retry
+    dlq: banking-transactions-dlq
