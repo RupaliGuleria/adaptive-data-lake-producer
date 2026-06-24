@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class StagingBuffer {
@@ -18,17 +19,25 @@ public class StagingBuffer {
     private static final int DRAIN_BATCH_SIZE = 1_000;
 
     private final LinkedBlockingQueue<ProcessedEvent> buffer = new LinkedBlockingQueue<>();
+    private final AtomicInteger totalAdded = new AtomicInteger(0);
 
     public void add(ProcessedEvent event) {
         buffer.offer(event);
+        totalAdded.incrementAndGet();
     }
 
     public void addAll(Collection<ProcessedEvent> events) {
         buffer.addAll(events);
+        totalAdded.addAndGet(events.size());
     }
 
     public int size() {
         return buffer.size();
+    }
+
+    /** Total events ever added — does not decrement on drain. Safe for test assertions. */
+    public int getTotalAdded() {
+        return totalAdded.get();
     }
 
     // Phase 2: replace this drain target with a MinIO S3 write — no other changes needed

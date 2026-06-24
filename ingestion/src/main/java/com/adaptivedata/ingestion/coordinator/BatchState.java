@@ -33,9 +33,13 @@ public class BatchState {
     }
 
     public void addEvent(ProcessedEvent event) {
-        events.add(event);
-        receivedTradeIds.add(event.getTradeId());
-        actualCount.incrementAndGet();
+        // ConcurrentHashMap.KeySetView.add() is atomic (backed by putIfAbsent).
+        // Guards against two workers racing through the DeduplicationStore check
+        // within the same poll batch — only the first add for a given tradeId wins.
+        if (receivedTradeIds.add(event.getTradeId())) {
+            events.add(event);
+            actualCount.incrementAndGet();
+        }
     }
 
     /**
