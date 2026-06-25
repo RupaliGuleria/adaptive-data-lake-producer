@@ -7,8 +7,8 @@ from typing import Any, Dict
 
 from confluent_kafka import Producer
 
-from .config import KAFKA_BOOTSTRAP_SERVERS, KAFKA_TOPIC, PIPELINE_VERSION, SCHEMA_ID
-from .schema import EventEnvelope
+from .config import CONTROL_TOPIC, KAFKA_BOOTSTRAP_SERVERS, KAFKA_TOPIC, PIPELINE_VERSION, SCHEMA_ID
+from .schema import EventEnvelope, TradeDoc
 
 logger = logging.getLogger(__name__)
 
@@ -52,15 +52,28 @@ class BankingProducer:
             }
         )
         self._topic = KAFKA_TOPIC
+        self._control_topic = CONTROL_TOPIC
         logger.info("Producer connected | brokers=%s topic=%s", KAFKA_BOOTSTRAP_SERVERS, KAFKA_TOPIC)
 
-    def send(self, row: Dict[str, Any]) -> None:
+    def send_control_doc(self, trade_doc: TradeDoc) -> None:
+        """Publish a TradeDoc to the control topic before the event batch."""
+        self._producer.produce(
+            topic=self._control_topic,
+            key=trade_doc.trade_group_id,
+            value=trade_doc.model_dump_json(),
+            callback=_delivery_report,
+        )
+        self._producer.poll(0)
+
+    def send(self, row: Dict[str, Any], trade_group_id: str, trade_id: str) -> None:
         """Send one banking transaction row to Kafka without blocking."""
         envelope = EventEnvelope(
             event_type="banking_transaction",
             idempotency_key=_make_idempotency_key(row),
             pipeline_version=PIPELINE_VERSION,
             schema_id=SCHEMA_ID,
+            trade_group_id=trade_group_id,
+            trade_id=trade_id,
             payload=row,
         )
         self._producer.produce(

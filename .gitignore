@@ -1,6 +1,29 @@
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
+dist/
+build/
 .venv/
+.pytest_cache/
+
+# Environment
 .env
+
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
 .DS_Store
-CLAUDE.md 
+Thumbs.db
+
+# Claude Code
+CLAUDE.md
