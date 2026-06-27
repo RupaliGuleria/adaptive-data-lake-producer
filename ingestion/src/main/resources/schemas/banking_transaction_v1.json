@@ -1,0 +1,26 @@
+{
+  "schema_id": "banking_transaction_v1",
+  "version": "1.0",
+  "fields": [
+    { "name": "transaction_id",        "type": "string",  "required": true  },
+    { "name": "transaction_date",      "type": "string",  "required": true  },
+    { "name": "amount",                "type": "number",  "required": true  },
+    { "name": "customer_id",           "type": "string",  "required": false },
+    { "name": "transaction_time",      "type": "string",  "required": false },
+    { "name": "account_type",          "type": "string",  "required": false },
+    { "name": "transaction_type",      "type": "string",  "required": false },
+    { "name": "transaction_direction", "type": "string",  "required": false },
+    { "name": "balance",               "type": "number",  "required": false },
+    { "name": "merchant_category",     "type": "string",  "required": false },
+    { "name": "state",                 "type": "string",  "required": false },
+    { "name": "credit_score",          "type": "number",  "required": false },
+    { "name": "has_loan",              "type": "number",  "required": false },
+    { "name": "loan_type",             "type": "string",  "required": false },
+    { "name": "emi_amount",            "type": "number",  "required": false },
+    { "name": "transaction_status",    "type": "string",  "required": false },
+    { "name": "channel",               "type": "string",  "required": false },
+    { "name": "kyc_status",            "type": "string",  "required": false },
+    { "name": "is_fraud",              "type": "number",  "required": false },
+    { "name": "transaction_hour",      "type": "number",  "required": false }
+  ]
+}
