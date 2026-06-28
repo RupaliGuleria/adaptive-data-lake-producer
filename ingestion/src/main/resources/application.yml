@@ -29,3 +29,6 @@ ingestion:
     primary: banking-transactions
     retry: banking-transactions-retry
     dlq: banking-transactions-dlq
+  intelligence:
+    quality:
+      threshold: 0.7
