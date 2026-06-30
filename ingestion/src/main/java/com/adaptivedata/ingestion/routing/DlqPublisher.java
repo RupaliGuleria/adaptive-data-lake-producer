@@ -1,6 +1,8 @@
 package com.adaptivedata.ingestion.routing;
 
 import com.adaptivedata.ingestion.config.IngestionConfig;
+import com.adaptivedata.ingestion.model.ProcessedEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.internals.RecordHeader;
@@ -19,10 +21,12 @@ public class DlqPublisher {
 
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final IngestionConfig config;
+    private final ObjectMapper objectMapper;
 
-    public DlqPublisher(KafkaTemplate<String, String> kafkaTemplate, IngestionConfig config) {
+    public DlqPublisher(KafkaTemplate<String, String> kafkaTemplate, IngestionConfig config, ObjectMapper objectMapper) {
         this.kafkaTemplate = kafkaTemplate;
         this.config = config;
+        this.objectMapper = objectMapper;
     }
 
     public void publish(ConsumerRecord<String, String> record, String failureReason, int attemptCount) {
@@ -40,6 +44,28 @@ public class DlqPublisher {
 
         kafkaTemplate.send(dlqRecord);
         logger.warn("DLQ | key={} reason={} attempt={}", record.key(), failureReason, attemptCount);
+    }
+
+    /** Called by the intelligence layer — routes a rejected ProcessedEvent to DLQ. */
+    public void publishRejected(ProcessedEvent event, String failureReason) {
+        try {
+            String payload = objectMapper.writeValueAsString(event);
+            ProducerRecord<String, String> dlqRecord = new ProducerRecord<>(
+                    config.getTopics().getDlq(),
+                    event.getEventId(),
+                    payload
+            );
+            dlqRecord.headers().add(new RecordHeader("failure_reason",
+                    failureReason.getBytes(StandardCharsets.UTF_8)));
+            dlqRecord.headers().add(new RecordHeader("original_topic",
+                    "banking-transactions".getBytes(StandardCharsets.UTF_8)));
+            dlqRecord.headers().add(new RecordHeader("source",
+                    "intelligence-layer".getBytes(StandardCharsets.UTF_8)));
+            kafkaTemplate.send(dlqRecord);
+            logger.warn("DLQ (intelligence) | event_id={} reason={}", event.getEventId(), failureReason);
+        } catch (Exception e) {
+            logger.error("Failed to publish rejected event to DLQ | event_id={}", event.getEventId(), e);
+        }
     }
 
     public void publishBatchFail(String tradeGroupId, int expectedCount, int actualCount, Set<String> missingTradeIds) {

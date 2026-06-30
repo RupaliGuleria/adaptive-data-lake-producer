@@ -1,5 +1,6 @@
 package com.adaptivedata.ingestion.staging;
 
+import com.adaptivedata.ingestion.intelligence.IntelligenceProcessor;
 import com.adaptivedata.ingestion.model.ProcessedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +21,11 @@ public class StagingBuffer {
 
     private final LinkedBlockingQueue<ProcessedEvent> buffer = new LinkedBlockingQueue<>();
     private final AtomicInteger totalAdded = new AtomicInteger(0);
+    private final IntelligenceProcessor intelligenceProcessor;
+
+    public StagingBuffer(IntelligenceProcessor intelligenceProcessor) {
+        this.intelligenceProcessor = intelligenceProcessor;
+    }
 
     public void add(ProcessedEvent event) {
         buffer.offer(event);
@@ -40,14 +46,13 @@ public class StagingBuffer {
         return totalAdded.get();
     }
 
-    // Phase 2: replace this drain target with a MinIO S3 write — no other changes needed
     @Scheduled(fixedDelayString = "${ingestion.staging.drain-interval-ms:5000}")
     public void drain() {
         List<ProcessedEvent> batch = new ArrayList<>(DRAIN_BATCH_SIZE);
         buffer.drainTo(batch, DRAIN_BATCH_SIZE);
         if (!batch.isEmpty()) {
-            logger.info("Drained {} events from staging buffer → intelligence layer", batch.size());
-            // TODO: forward batch to intelligence layer
+            logger.info("Draining {} events → intelligence layer", batch.size());
+            intelligenceProcessor.processBatch(batch);
         }
     }
 }

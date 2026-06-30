@@ -56,8 +56,8 @@ public class QualityEngine {
                     .filter(r -> !r.isPassed())
                     .map(RuleResult::getRuleId)
                     .collect(Collectors.toList());
-            logger.warn("Quality check failed | event_id={} score={:.2f} threshold={} failed_rules={}",
-                    event.getEventId(), score, threshold, failedRules);
+            logger.warn("Quality check failed | event_id={} score={} threshold={} failed_rules={}",
+                    event.getEventId(), String.format("%.2f", score), threshold, failedRules);
         }
 
         return QualityCheckResult.builder()
