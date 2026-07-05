@@ -8,7 +8,6 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.parquet.avro.AvroParquetWriter;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.apache.parquet.io.LocalOutputFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -20,7 +19,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -70,10 +68,9 @@ public class ParquetStorageWriter {
             return;
         }
 
-        Path tempFile;
+        java.nio.file.Path tempNioPath;
         try {
-            tempFile = Files.createTempFile("parquet-", ".tmp");
-            Files.delete(tempFile); // AvroParquetWriter requires the target path not to exist yet
+            tempNioPath = Files.createTempFile("parquet-", ".parquet");
         } catch (IOException e) {
             logger.error("Failed to allocate temp file for Parquet write | partition={} events={}",
                     partitionKey, events.size(), e);
@@ -82,7 +79,7 @@ public class ParquetStorageWriter {
 
         try {
             try (org.apache.parquet.hadoop.ParquetWriter<GenericRecord> writer = AvroParquetWriter
-                    .<GenericRecord>builder(new LocalOutputFile(tempFile))
+                    .<GenericRecord>builder(new NioLocalOutputFile(tempNioPath))
                     .withSchema(avroSchema)
                     .withCompressionCodec(CompressionCodecName.SNAPPY)
                     .withDictionaryEncoding(true)
@@ -94,14 +91,14 @@ public class ParquetStorageWriter {
             }
 
             String key = buildKey(partitionKey);
-            long sizeBytes = Files.size(tempFile);
+            long sizeBytes = Files.size(tempNioPath);
             s3Client.putObject(
                     PutObjectRequest.builder()
                             .bucket(bucket)
                             .key(key)
                             .contentType("application/octet-stream")
                             .build(),
-                    RequestBody.fromFile(tempFile));
+                    RequestBody.fromFile(tempNioPath));
 
             logger.info("Parquet written → MinIO | bucket={} key={} events={} size_bytes={}",
                     bucket, key, events.size(), sizeBytes);
@@ -109,7 +106,7 @@ public class ParquetStorageWriter {
             logger.error("Parquet write failed | partition={} events={}", partitionKey, events.size(), e);
         } finally {
             try {
-                Files.deleteIfExists(tempFile);
+                Files.deleteIfExists(tempNioPath);
             } catch (IOException ignored) {
                 // best-effort cleanup of the local temp file
             }
