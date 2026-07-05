@@ -32,6 +32,9 @@ ingestion:
   intelligence:
     quality:
       threshold: 0.7
+    parquet:
+      max-events-per-file: 10000
+      flush-interval-ms: 60000
 
 minio:
   endpoint: ${MINIO_ENDPOINT:http://localhost:9000}

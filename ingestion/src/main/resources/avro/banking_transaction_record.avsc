@@ -1,0 +1,35 @@
+{
+  "type": "record",
+  "name": "BankingTransactionRecord",
+  "namespace": "com.adaptivedata.ingestion.parquet",
+  "doc": "Flattened, queryable representation of a ValidatedEvent for columnar storage.",
+  "fields": [
+    { "name": "event_id", "type": "string" },
+    { "name": "trade_group_id", "type": "string" },
+    { "name": "trade_id", "type": "string" },
+    { "name": "idempotency_key", "type": "string" },
+    { "name": "event_type", "type": "string" },
+    { "name": "timestamp", "type": "string" },
+    { "name": "source", "type": "string" },
+    { "name": "pipeline_version", "type": "string" },
+    { "name": "schema_id", "type": "string" },
+    { "name": "payload_json", "type": "string", "doc": "Raw normalised CSV row, JSON-encoded" },
+
+    { "name": "validation_status", "type": "string" },
+    { "name": "schema_version", "type": "string" },
+    { "name": "schema_valid", "type": "boolean" },
+    { "name": "drift_detected", "type": "boolean" },
+    { "name": "drift_type", "type": ["null", "string"], "default": null },
+    { "name": "breaking_change", "type": "boolean" },
+    { "name": "compatibility", "type": ["null", "string"], "default": null },
+    { "name": "schema_violations_json", "type": "string", "doc": "List<SchemaViolation>, JSON-encoded" },
+
+    { "name": "quality_score", "type": "double" },
+    { "name": "quality_passed", "type": "boolean" },
+    { "name": "quality_threshold", "type": "double" },
+    { "name": "quality_rule_results_json", "type": "string", "doc": "List<RuleResult>, JSON-encoded" },
+
+    { "name": "ingestion_time", "type": "string" },
+    { "name": "source_topic", "type": "string" }
+  ]
+}
