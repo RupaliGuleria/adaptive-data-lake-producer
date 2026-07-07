@@ -96,6 +96,15 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- DuckDB JDBC — in-process analytical SQL over Parquet files in MinIO.
+             Spark dependency is intentionally omitted: add spark-sql_2.12:3.5.x
+             and hadoop-aws when activating SparkQueryEngine. -->
+        <dependency>
+            <groupId>org.duckdb</groupId>
+            <artifactId>duckdb_jdbc</artifactId>
+            <version>0.10.3</version>
+        </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

@@ -35,6 +35,10 @@ ingestion:
     parquet:
       max-events-per-file: 10000
       flush-interval-ms: 60000
+  query:
+    max-rows: 10000
+    spark:
+      enabled: false
 
 minio:
   endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
