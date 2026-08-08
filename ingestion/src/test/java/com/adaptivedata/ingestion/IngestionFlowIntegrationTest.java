@@ -1,16 +1,19 @@
 package com.adaptivedata.ingestion;
 
 import com.adaptivedata.ingestion.coordinator.BatchCoordinator;
+import com.adaptivedata.ingestion.query.DuckDbQueryEngine;
 import com.adaptivedata.ingestion.staging.StagingBuffer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
+import software.amazon.awssdk.services.s3.S3Client;
 
 import java.util.List;
 import java.util.Map;
@@ -20,7 +23,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @DirtiesContext
 @EmbeddedKafka(
         partitions = 1,
@@ -37,6 +40,11 @@ import static org.awaitility.Awaitility.await;
         "ingestion.staging.drain-interval-ms=999999999"   // disable drain during tests
 })
 class IngestionFlowIntegrationTest {
+
+    // Prevent MinIO connection attempt (ensureBucket ApplicationRunner) and
+    // DuckDB httpfs init (@PostConstruct) from killing the test context.
+    @MockBean private S3Client s3Client;
+    @MockBean private DuckDbQueryEngine duckDbQueryEngine;
 
     @Autowired private KafkaTemplate<String, String> kafkaTemplate;
     @Autowired private StagingBuffer stagingBuffer;
