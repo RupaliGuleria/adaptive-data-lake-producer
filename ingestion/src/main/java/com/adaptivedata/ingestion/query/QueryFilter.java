@@ -2,6 +2,7 @@ package com.adaptivedata.ingestion.query;
 
 import lombok.Builder;
 import lombok.Value;
+import lombok.extern.jackson.Jacksonized;
 
 /**
  * Describes what to query and which partitions to target.
@@ -11,6 +12,7 @@ import lombok.Value;
  */
 @Value
 @Builder
+@Jacksonized
 public class QueryFilter {
 
     /** MinIO prefix to scan: "data" for PASSED events, "quarantine" for QUARANTINED. */

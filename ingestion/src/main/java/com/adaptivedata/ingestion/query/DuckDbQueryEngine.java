@@ -144,7 +144,12 @@ public class DuckDbQueryEngine implements QueryEngine {
         boolean useSsl = "https".equalsIgnoreCase(endpoint.getScheme());
 
         try (Statement stmt = conn.createStatement()) {
-            stmt.execute("INSTALL httpfs");
+            // INSTALL is best-effort — httpfs is bundled in the JDBC JAR and may not need downloading
+            try {
+                stmt.execute("INSTALL httpfs");
+            } catch (Exception e) {
+                logger.debug("httpfs install skipped (likely already bundled): {}", e.getMessage());
+            }
             stmt.execute("LOAD httpfs");
             stmt.execute(String.format("SET s3_endpoint='%s:%d'", host, port));
             stmt.execute(String.format("SET s3_access_key_id='%s'", minioProps.getAccessKey()));
