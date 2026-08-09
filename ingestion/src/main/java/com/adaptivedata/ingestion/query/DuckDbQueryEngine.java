@@ -79,38 +79,52 @@ public class DuckDbQueryEngine implements QueryEngine {
     public synchronized QueryResult execute(QueryFilter filter) {
         String s3Path = pathBuilder.build(filter);
         String whereClause = pathBuilder.buildWhere(filter);
-        int limit = Math.min(filter.getMaxRows(), globalMaxRows);
+        int pageSize = Math.min(filter.getPageSize(), Math.min(filter.getMaxRows(), globalMaxRows));
+        int offset = (filter.getPage() - 1) * pageSize;
 
-        String sql = buildSql(s3Path, whereClause, limit);
-        logger.info("DuckDB query | path={} where=[{}] limit={}", s3Path, whereClause, limit);
+        String scanSource = "read_parquet('" + s3Path + "', hive_partitioning=true)";
+        String countSql = buildCountSql(scanSource, whereClause);
+        String sql = buildSql(scanSource, whereClause, pageSize, offset);
+
+        logger.info("DuckDB query | path={} where=[{}] page={} pageSize={} offset={}",
+                s3Path, whereClause, filter.getPage(), pageSize, offset);
 
         long start = System.currentTimeMillis();
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+        try (Statement stmt = connection.createStatement()) {
+            int totalRows = queryCount(stmt, countSql);
 
-            ResultSetMetaData meta = rs.getMetaData();
-            int colCount = meta.getColumnCount();
-            List<String> columns = new ArrayList<>(colCount);
-            for (int i = 1; i <= colCount; i++) {
-                columns.add(meta.getColumnName(i));
-            }
-
+            List<String> columns;
             List<Map<String, Object>> rows = new ArrayList<>();
-            while (rs.next()) {
-                Map<String, Object> row = new LinkedHashMap<>(colCount);
-                for (String col : columns) {
-                    row.put(col, rs.getObject(col));
+            try (ResultSet rs = stmt.executeQuery(sql)) {
+                ResultSetMetaData meta = rs.getMetaData();
+                int colCount = meta.getColumnCount();
+                columns = new ArrayList<>(colCount);
+                for (int i = 1; i <= colCount; i++) {
+                    columns.add(meta.getColumnName(i));
                 }
-                rows.add(row);
+
+                while (rs.next()) {
+                    Map<String, Object> row = new LinkedHashMap<>(colCount);
+                    for (String col : columns) {
+                        row.put(col, rs.getObject(col));
+                    }
+                    rows.add(row);
+                }
             }
 
             long ms = System.currentTimeMillis() - start;
-            logger.info("DuckDB result | rows={} time_ms={}", rows.size(), ms);
+            int totalPages = Math.max(1, (int) Math.ceil(totalRows / (double) pageSize));
+            logger.info("DuckDB result | returned={} totalRows={} totalPages={} time_ms={}",
+                    rows.size(), totalRows, totalPages, ms);
 
             return QueryResult.builder()
                     .columns(columns)
                     .rows(rows)
-                    .totalRows(rows.size())
+                    .totalRows(totalRows)
+                    .returnedRows(rows.size())
+                    .page(filter.getPage())
+                    .pageSize(pageSize)
+                    .totalPages(totalPages)
                     .executionTimeMs(ms)
                     .engine(ENGINE)
                     .scannedPath(s3Path)
@@ -123,17 +137,32 @@ public class DuckDbQueryEngine implements QueryEngine {
         }
     }
 
-    private String buildSql(String s3Path, String whereClause, int limit) {
+    private int queryCount(Statement stmt, String countSql) throws Exception {
+        try (ResultSet rs = stmt.executeQuery(countSql)) {
+            return rs.next() ? rs.getInt(1) : 0;
+        }
+    }
+
+    private String buildSql(String scanSource, String whereClause, int limit, int offset) {
         StringBuilder sql = new StringBuilder()
-                .append("SELECT * FROM read_parquet('")
-                .append(s3Path)
-                .append("', hive_partitioning=true)");
+                .append("SELECT * FROM ").append(scanSource);
 
         if (!whereClause.isBlank()) {
             sql.append(" WHERE ").append(whereClause);
         }
 
-        sql.append(" LIMIT ").append(limit);
+        sql.append(" LIMIT ").append(limit).append(" OFFSET ").append(offset);
+        return sql.toString();
+    }
+
+    private String buildCountSql(String scanSource, String whereClause) {
+        StringBuilder sql = new StringBuilder()
+                .append("SELECT COUNT(*) FROM ").append(scanSource);
+
+        if (!whereClause.isBlank()) {
+            sql.append(" WHERE ").append(whereClause);
+        }
+
         return sql.toString();
     }
 

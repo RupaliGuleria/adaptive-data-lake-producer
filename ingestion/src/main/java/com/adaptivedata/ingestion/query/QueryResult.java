@@ -17,7 +17,21 @@ public class QueryResult {
     /** Each element is one row: column name → value (nullable). */
     List<Map<String, Object>> rows;
 
+    /** Total rows matching the filter across all pages (from a COUNT(*) query). */
     int totalRows;
+
+    /** Rows actually returned in this response, i.e. {@code rows.size()}. */
+    int returnedRows;
+
+    /** 1-based page number this result represents. */
+    int page;
+
+    /** Rows requested per page. */
+    int pageSize;
+
+    /** {@code ceil(totalRows / pageSize)}, minimum 1. */
+    int totalPages;
+
     long executionTimeMs;
 
     /** Which engine produced this result: "duckdb" or "spark". */
