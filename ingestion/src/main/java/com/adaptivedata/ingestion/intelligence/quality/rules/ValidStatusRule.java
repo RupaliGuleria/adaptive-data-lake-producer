@@ -19,6 +19,11 @@ public class ValidStatusRule implements QualityRule {
     }
 
     @Override
+    public boolean appliesTo(String schemaId) {
+        return "banking_transaction_v1".equals(schemaId);
+    }
+
+    @Override
     public RuleResult evaluate(Map<String, Object> payload) {
         Object value = payload.get("transaction_status");
         String status = value != null ? value.toString() : null;

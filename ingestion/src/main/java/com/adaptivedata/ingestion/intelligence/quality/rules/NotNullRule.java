@@ -15,15 +15,22 @@ public class NotNullRule implements QualityRule {
 
     private final String field;
     private final Severity severity;
+    private final String schemaId;
 
-    public NotNullRule(String field, Severity severity) {
+    public NotNullRule(String field, Severity severity, String schemaId) {
         this.field = field;
         this.severity = severity;
+        this.schemaId = schemaId;
     }
 
     @Override
     public String ruleId() {
         return field + ".not_null";
+    }
+
+    @Override
+    public boolean appliesTo(String schemaId) {
+        return this.schemaId.equals(schemaId);
     }
 
     @Override
