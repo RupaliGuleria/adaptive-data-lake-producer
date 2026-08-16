@@ -1,0 +1,15 @@
+{
+  "schema_id": "tpch_orders_v1",
+  "version": "1.0",
+  "fields": [
+    { "name": "o_orderkey",      "type": "number", "required": true  },
+    { "name": "o_custkey",       "type": "number", "required": true  },
+    { "name": "o_orderstatus",   "type": "string", "required": false },
+    { "name": "o_totalprice",    "type": "number", "required": true  },
+    { "name": "o_orderdate",     "type": "string", "required": false },
+    { "name": "o_orderpriority", "type": "string", "required": false },
+    { "name": "o_clerk",         "type": "string", "required": false },
+    { "name": "o_shippriority",  "type": "number", "required": false },
+    { "name": "o_comment",       "type": "string", "required": false }
+  ]
+}

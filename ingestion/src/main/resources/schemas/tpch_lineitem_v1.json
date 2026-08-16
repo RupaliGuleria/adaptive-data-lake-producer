@@ -1,0 +1,23 @@
+{
+  "schema_id": "tpch_lineitem_v1",
+  "version": "1.0",
+  "fields": [
+    { "name": "line_item_id",    "type": "string", "required": true  },
+    { "name": "l_orderkey",      "type": "number", "required": true  },
+    { "name": "l_partkey",       "type": "number", "required": false },
+    { "name": "l_suppkey",       "type": "number", "required": false },
+    { "name": "l_linenumber",    "type": "number", "required": true  },
+    { "name": "l_quantity",      "type": "number", "required": true  },
+    { "name": "l_extendedprice", "type": "number", "required": false },
+    { "name": "l_discount",      "type": "number", "required": false },
+    { "name": "l_tax",           "type": "number", "required": false },
+    { "name": "l_returnflag",    "type": "string", "required": false },
+    { "name": "l_linestatus",    "type": "string", "required": false },
+    { "name": "l_shipdate",      "type": "string", "required": false },
+    { "name": "l_commitdate",    "type": "string", "required": false },
+    { "name": "l_receiptdate",   "type": "string", "required": false },
+    { "name": "l_shipinstruct",  "type": "string", "required": false },
+    { "name": "l_shipmode",      "type": "string", "required": false },
+    { "name": "l_comment",       "type": "string", "required": false }
+  ]
+}
