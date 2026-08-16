@@ -21,6 +21,11 @@ public class DateFormatRule implements QualityRule {
     }
 
     @Override
+    public boolean appliesTo(String schemaId) {
+        return "banking_transaction_v1".equals(schemaId);
+    }
+
+    @Override
     public RuleResult evaluate(Map<String, Object> payload) {
         Object value = payload.get("transaction_date");
         String raw = value != null ? value.toString() : null;

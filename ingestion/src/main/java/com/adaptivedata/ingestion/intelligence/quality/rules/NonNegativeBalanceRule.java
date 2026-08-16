@@ -16,6 +16,11 @@ public class NonNegativeBalanceRule implements QualityRule {
     }
 
     @Override
+    public boolean appliesTo(String schemaId) {
+        return "banking_transaction_v1".equals(schemaId);
+    }
+
+    @Override
     public RuleResult evaluate(Map<String, Object> payload) {
         Object value = payload.get("balance");
         // balance is optional — skip without penalising the score
