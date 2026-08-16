@@ -7,16 +7,16 @@ from typing import Any, Dict
 
 from confluent_kafka import Producer
 
-from .config import CONTROL_TOPIC, KAFKA_BOOTSTRAP_SERVERS, KAFKA_TOPIC, PIPELINE_VERSION, SCHEMA_ID
+from .config import CONTROL_TOPIC, EVENT_TYPE, ID_FIELD, KAFKA_BOOTSTRAP_SERVERS, KAFKA_TOPIC, PIPELINE_VERSION, SCHEMA_ID
 from .schema import EventEnvelope, TradeDoc
 
 logger = logging.getLogger(__name__)
 
 
 def _make_idempotency_key(row: Dict[str, Any]) -> str:
-    """Build a stable deduplication key from a transaction row."""
-    if row.get("transaction_id") is not None:
-        return str(row["transaction_id"])
+    """Build a stable deduplication key from a row, preferring the configured ID field."""
+    if row.get(ID_FIELD) is not None:
+        return str(row[ID_FIELD])
     raw = json.dumps(row, sort_keys=True, default=str)
     return hashlib.sha256(raw.encode()).hexdigest()
 
@@ -68,7 +68,7 @@ class BankingProducer:
     def send(self, row: Dict[str, Any], trade_group_id: str, trade_id: str) -> None:
         """Send one banking transaction row to Kafka without blocking."""
         envelope = EventEnvelope(
-            event_type="banking_transaction",
+            event_type=EVENT_TYPE,
             idempotency_key=_make_idempotency_key(row),
             pipeline_version=PIPELINE_VERSION,
             schema_id=SCHEMA_ID,

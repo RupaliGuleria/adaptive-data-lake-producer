@@ -109,10 +109,18 @@ public class BatchProcessor {
             return EventResult.DLQ_ROUTED;
         }
 
-        // 4. Ensure control doc is registered for this trade group
+        // 4. Ensure control doc is registered for this trade group — a control doc that
+        // hasn't been registered yet is usually just lagging behind on its own topic
+        // (ControlDocListener and EventBatchListener poll independently, no cross-topic
+        // ordering), not genuinely missing, so retry with backoff before giving up.
         if (!batchCoordinator.isRegistered(envelope.getTradeGroupId())) {
-            dlqPublisher.publish(record, "NO_CONTROL_DOC", getAttemptCount(record));
-            return EventResult.DLQ_ROUTED;
+            int attemptCount = getAttemptCount(record);
+            if (attemptCount >= config.getRetry().getMaxAttempts()) {
+                dlqPublisher.publish(record, "NO_CONTROL_DOC", attemptCount);
+                return EventResult.DLQ_ROUTED;
+            }
+            retryPublisher.publish(record, attemptCount + 1);
+            return EventResult.RETRY_ROUTED;
         }
 
         // 5. Build and record the processed event

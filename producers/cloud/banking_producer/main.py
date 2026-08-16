@@ -4,7 +4,7 @@ import logging
 import sys
 import uuid
 
-from .config import CSV_FILE_PATH, PIPELINE_VERSION, PRODUCER_BATCH_SIZE, SCHEMA_ID
+from .config import CSV_FILE_PATH, ID_FIELD, PIPELINE_VERSION, PRODUCER_BATCH_SIZE, SCHEMA_ID
 from .csv_loader import load_transactions
 from .producer import BankingProducer
 from .schema import TradeDoc
@@ -18,10 +18,10 @@ logger = logging.getLogger(__name__)
 
 
 def _trade_id(row: dict) -> str:
-    tid = row.get("transaction_id")
+    tid = row.get(ID_FIELD)
     if tid is not None:
         return str(tid)
-    raise ValueError(f"Row has no transaction_id: {row}")
+    raise ValueError(f"Row has no {ID_FIELD}: {row}")
 
 
 def main() -> None:
