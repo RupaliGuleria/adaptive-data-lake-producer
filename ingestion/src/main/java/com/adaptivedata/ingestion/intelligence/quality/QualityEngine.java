@@ -30,6 +30,7 @@ public class QualityEngine {
         Map<String, Object> payload = event.getPayload();
 
         List<RuleResult> results = rules.stream()
+                .filter(rule -> rule.appliesTo(event.getSchemaId()))
                 .map(rule -> rule.evaluate(payload))
                 .collect(Collectors.toList());
 

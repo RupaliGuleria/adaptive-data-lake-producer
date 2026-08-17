@@ -19,6 +19,11 @@ public class CreditScoreRangeRule implements QualityRule {
     }
 
     @Override
+    public boolean appliesTo(String schemaId) {
+        return "banking_transaction_v1".equals(schemaId);
+    }
+
+    @Override
     public RuleResult evaluate(Map<String, Object> payload) {
         Object value = payload.get("credit_score");
         // credit_score is optional — skip without penalising the score
