@@ -2,9 +2,17 @@ from __future__ import annotations
 
 import logging
 import sys
+import time
 import uuid
 
-from .config import CSV_FILE_PATH, ID_FIELD, PIPELINE_VERSION, PRODUCER_BATCH_SIZE, SCHEMA_ID
+from .config import (
+    CONTROL_DOC_LEAD_TIME_MS,
+    CSV_FILE_PATH,
+    ID_FIELD,
+    PIPELINE_VERSION,
+    PRODUCER_BATCH_SIZE,
+    SCHEMA_ID,
+)
 from .csv_loader import load_transactions
 from .producer import BankingProducer
 from .schema import TradeDoc
@@ -53,6 +61,12 @@ def main() -> None:
             trade_group_id,
             len(chunk),
         )
+
+        if CONTROL_DOC_LEAD_TIME_MS > 0:
+            # Ack above only proves Kafka persisted the control doc, not that
+            # ControlDocListener has consumed it yet — this is an explicit,
+            # opt-in extra margin on top of that, not a substitute for it.
+            time.sleep(CONTROL_DOC_LEAD_TIME_MS / 1000)
 
         for row, trade_id in zip(chunk, trade_ids):
             producer.send(row, trade_group_id=trade_group_id, trade_id=trade_id)

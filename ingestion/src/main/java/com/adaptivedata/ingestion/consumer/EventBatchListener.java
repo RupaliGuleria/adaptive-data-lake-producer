@@ -1,5 +1,6 @@
 package com.adaptivedata.ingestion.consumer;
 
+import com.adaptivedata.ingestion.metrics.IngestionMetrics;
 import com.adaptivedata.ingestion.model.BatchProcessorResult;
 import com.adaptivedata.ingestion.processor.BatchProcessor;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -17,9 +18,11 @@ public class EventBatchListener {
     private static final Logger logger = LoggerFactory.getLogger(EventBatchListener.class);
 
     private final BatchProcessor batchProcessor;
+    private final IngestionMetrics metrics;
 
-    public EventBatchListener(BatchProcessor batchProcessor) {
+    public EventBatchListener(BatchProcessor batchProcessor, IngestionMetrics metrics) {
         this.batchProcessor = batchProcessor;
+        this.metrics = metrics;
     }
 
     @KafkaListener(
@@ -29,6 +32,10 @@ public class EventBatchListener {
     )
     public void onEvents(List<ConsumerRecord<String, String>> records, Acknowledgment ack) {
         try {
+            // Counted here, not inside BatchProcessor, so retry re-attempts of the
+            // same record (routed back through RetryIngestionListener) don't inflate
+            // "total events received" — this is the one place a record enters fresh.
+            metrics.recordReceived(records.size());
             BatchProcessorResult result = batchProcessor.process(records);
             logger.info("Poll done | total={} success={} duplicate={} retry={} dlq={}",
                     result.getTotal(), result.getSuccess(), result.getDuplicates(),

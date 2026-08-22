@@ -2,6 +2,7 @@ package com.adaptivedata.ingestion.processor;
 
 import com.adaptivedata.ingestion.config.IngestionConfig;
 import com.adaptivedata.ingestion.coordinator.BatchCoordinator;
+import com.adaptivedata.ingestion.metrics.IngestionMetrics;
 import com.adaptivedata.ingestion.model.BatchProcessorResult;
 import com.adaptivedata.ingestion.model.EventEnvelope;
 import com.adaptivedata.ingestion.model.EventResult;
@@ -37,6 +38,7 @@ public class BatchProcessor {
     private final DlqPublisher dlqPublisher;
     private final ObjectMapper objectMapper;
     private final IngestionConfig config;
+    private final IngestionMetrics metrics;
 
     public BatchProcessor(
             DeduplicationStore deduplicationStore,
@@ -45,7 +47,8 @@ public class BatchProcessor {
             RetryPublisher retryPublisher,
             DlqPublisher dlqPublisher,
             ObjectMapper objectMapper,
-            IngestionConfig config) {
+            IngestionConfig config,
+            IngestionMetrics metrics) {
         this.deduplicationStore = deduplicationStore;
         this.errorClassifier = errorClassifier;
         this.batchCoordinator = batchCoordinator;
@@ -53,6 +56,7 @@ public class BatchProcessor {
         this.dlqPublisher = dlqPublisher;
         this.objectMapper = objectMapper;
         this.config = config;
+        this.metrics = metrics;
         this.workerPool = Executors.newFixedThreadPool(config.getWorkerPoolSize());
     }
 
@@ -100,6 +104,7 @@ public class BatchProcessor {
 
         // 2. Dedup check
         if (deduplicationStore.isDuplicate(envelope.getIdempotencyKey())) {
+            metrics.recordDuplicate();
             return EventResult.DUPLICATE;
         }
 
@@ -117,7 +122,12 @@ public class BatchProcessor {
             int attemptCount = getAttemptCount(record);
             if (attemptCount >= config.getRetry().getMaxAttempts()) {
                 dlqPublisher.publish(record, "NO_CONTROL_DOC", attemptCount);
+                metrics.recordQuarantined("NO_CONTROL_DOC");
                 return EventResult.DLQ_ROUTED;
+            }
+            if (attemptCount == 0) {
+                // Count distinct events that ever needed a retry, not every retry attempt.
+                metrics.recordRetryRoutedControlDoc();
             }
             retryPublisher.publish(record, attemptCount + 1);
             return EventResult.RETRY_ROUTED;
@@ -140,6 +150,11 @@ public class BatchProcessor {
 
             deduplicationStore.mark(envelope.getIdempotencyKey());
             batchCoordinator.recordProcessed(processed);
+            if (getAttemptCount(record) == 0) {
+                metrics.recordProcessedNormally();
+            } else {
+                metrics.recordRetryRecovered();
+            }
             return EventResult.SUCCESS;
         } catch (Exception e) {
             return routeError(record, e);
@@ -152,14 +167,19 @@ public class BatchProcessor {
 
         if (errorType == ErrorClassifier.ErrorType.FATAL) {
             dlqPublisher.publish(record, "FATAL:" + e.getClass().getSimpleName(), attemptCount);
+            metrics.recordQuarantined("FATAL:" + e.getClass().getSimpleName());
             return EventResult.DLQ_ROUTED;
         }
 
         if (attemptCount >= config.getRetry().getMaxAttempts()) {
             dlqPublisher.publish(record, "RETRY_EXHAUSTED", attemptCount);
+            metrics.recordQuarantined("RETRY_EXHAUSTED");
             return EventResult.DLQ_ROUTED;
         }
 
+        if (attemptCount == 0) {
+            metrics.recordRetryRoutedOther();
+        }
         retryPublisher.publish(record, attemptCount + 1);
         return EventResult.RETRY_ROUTED;
     }
