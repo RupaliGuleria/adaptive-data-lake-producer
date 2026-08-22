@@ -62,10 +62,11 @@ public class ParquetStorageWriter {
     /**
      * Writes all events into one Parquet file under {@code partitionKey} and uploads it to MinIO.
      * @param partitionKey Hive-style path, e.g. {@code data/year=2026/month=07/day=01/hour=14/source=cloud}
+     * @return timing/size result, or {@link WriteResult#FAILED} if the write or upload failed
      */
-    public void writeBatch(String partitionKey, List<ValidatedEvent> events) {
+    public WriteResult writeBatch(String partitionKey, List<ValidatedEvent> events) {
         if (events.isEmpty()) {
-            return;
+            return WriteResult.FAILED;
         }
 
         java.nio.file.Path tempNioPath;
@@ -74,10 +75,11 @@ public class ParquetStorageWriter {
         } catch (IOException e) {
             logger.error("Failed to allocate temp file for Parquet write | partition={} events={}",
                     partitionKey, events.size(), e);
-            return;
+            return WriteResult.FAILED;
         }
 
         try {
+            long writeStart = System.nanoTime();
             try (org.apache.parquet.hadoop.ParquetWriter<GenericRecord> writer = AvroParquetWriter
                     .<GenericRecord>builder(new NioLocalOutputFile(tempNioPath))
                     .withSchema(avroSchema)
@@ -89,9 +91,11 @@ public class ParquetStorageWriter {
                     writer.write(recordMapper.toRecord(avroSchema, event));
                 }
             }
+            long writeMs = (System.nanoTime() - writeStart) / 1_000_000;
 
             String key = buildKey(partitionKey);
             long sizeBytes = Files.size(tempNioPath);
+            long putStart = System.nanoTime();
             s3Client.putObject(
                     PutObjectRequest.builder()
                             .bucket(bucket)
@@ -99,11 +103,14 @@ public class ParquetStorageWriter {
                             .contentType("application/octet-stream")
                             .build(),
                     RequestBody.fromFile(tempNioPath));
+            long putMs = (System.nanoTime() - putStart) / 1_000_000;
 
-            logger.info("Parquet written → MinIO | bucket={} key={} events={} size_bytes={}",
-                    bucket, key, events.size(), sizeBytes);
+            logger.info("Parquet written → MinIO | bucket={} key={} events={} size_bytes={} parquet_write_ms={} s3_put_ms={} thread={}",
+                    bucket, key, events.size(), sizeBytes, writeMs, putMs, Thread.currentThread().getName());
+            return new WriteResult(sizeBytes, writeMs, putMs);
         } catch (IOException e) {
             logger.error("Parquet write failed | partition={} events={}", partitionKey, events.size(), e);
+            return WriteResult.FAILED;
         } finally {
             try {
                 Files.deleteIfExists(tempNioPath);
@@ -116,5 +123,12 @@ public class ParquetStorageWriter {
     private String buildKey(String partitionKey) {
         return String.format("%s/part-%d-%d.parquet",
                 partitionKey, fileCounter.incrementAndGet(), System.currentTimeMillis());
+    }
+
+    public record WriteResult(long actualBytes, long writeMs, long putMs) {
+        public static final WriteResult FAILED = new WriteResult(-1, -1, -1);
+        public boolean isSuccess() {
+            return actualBytes >= 0;
+        }
     }
 }

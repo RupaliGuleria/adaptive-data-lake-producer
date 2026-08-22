@@ -28,7 +28,7 @@ public class ControlDocListener {
     @KafkaListener(
             topics = "${ingestion.topics.control:banking-control}",
             groupId = "${spring.kafka.consumer.group-id:onprem-ingestion-group}",
-            containerFactory = "batchListenerContainerFactory"
+            containerFactory = "controlListenerContainerFactory"
     )
     public void onControlDocs(List<ConsumerRecord<String, String>> records, Acknowledgment ack) {
         for (ConsumerRecord<String, String> record : records) {

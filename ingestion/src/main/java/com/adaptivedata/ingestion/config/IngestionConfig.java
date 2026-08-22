@@ -14,11 +14,22 @@ public class IngestionConfig {
     private BatchProperties batch = new BatchProperties();
     private RetryProperties retry = new RetryProperties();
     private TopicsProperties topics = new TopicsProperties();
+    private StagingProperties staging = new StagingProperties();
 
     @Data
     public static class BatchProperties {
         private int timeoutMinutes = 5;
         private long timeoutCheckIntervalMs = 30_000;
+    }
+
+    @Data
+    public static class StagingProperties {
+        /**
+         * Bounded so a slow/stuck writer stage produces visible backpressure
+         * (callers block on put()) instead of unbounded memory growth. Sized
+         * generously above what a single burst realistically queues.
+         */
+        private int queueCapacity = 200_000;
     }
 
     @Data

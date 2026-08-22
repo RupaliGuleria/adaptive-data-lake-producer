@@ -18,3 +18,14 @@ ID_FIELD: str = os.getenv("ID_FIELD", "transaction_id")
 
 # EventEnvelope.event_type — a free-text label for the payload's domain.
 EVENT_TYPE: str = os.getenv("EVENT_TYPE", "banking_transaction")
+
+# Extra wait after the control doc's Kafka delivery ack, before this chunk's
+# events start sending. A produce ack only proves the broker persisted the
+# control doc — it says nothing about whether ControlDocListener's own poll
+# loop has consumed and registered it yet (see docs on the ingestion-side
+# control-doc/event race). Defaults to 0 — off unless explicitly set, so
+# production/default behavior stays explicit rather than silently throttled.
+# Not meant to model a real several-minutes-earlier upstream control feed;
+# that would be a much larger value set deliberately per environment, not a
+# default baked into this code.
+CONTROL_DOC_LEAD_TIME_MS: int = int(os.getenv("CONTROL_DOC_LEAD_TIME_MS", "0"))
